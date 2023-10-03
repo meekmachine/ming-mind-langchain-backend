@@ -61,4 +61,3 @@ jobs:
           app-name: 'claridad-langchain'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_113915B2330343FDB82F8550454A7277 }}
-          startup-command: 'python app.py'  # Add this line
