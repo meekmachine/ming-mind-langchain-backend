@@ -1,6 +1,9 @@
 import argparse
 import pandas as pd
 from convokit import Corpus, download
+import random
+import redis
+import pickle
 
 # Set up command line arguments
 parser = argparse.ArgumentParser(description='Process conversation dataset.')
@@ -8,42 +11,63 @@ parser.add_argument('--min_messages', type=int, default=0, help='Minimum number 
 parser.add_argument('--has_personal_attack', type=bool, default=False, help='Whether the conversation includes a personal attack')
 args = parser.parse_args()
 
-# Download and load the corpus
-corpus = Corpus(filename=download("conversations-gone-awry-corpus"))
+# Connect to Redis
+r = redis.Redis(host='localhost', port=6379, db=0)
 
-# Create DataFrames
-conversations_df = corpus.get_conversations_dataframe()
-utterances_df = corpus.get_utterances_dataframe()
-speakers_df = corpus.get_speakers_dataframe()
+# Check if DataFrames are in Redis
+conversations_df = r.get('conversations_df')
+utterances_df = r.get('utterances_df')
+speakers_df = r.get('speakers_df')
+
+if conversations_df is None or utterances_df is None or speakers_df is None:
+    # Download and load the corpus
+    corpus = Corpus(filename=download("conversations-gone-awry-corpus"))
+
+    # Create DataFrames
+    conversations_df = corpus.get_conversations_dataframe()
+    utterances_df = corpus.get_utterances_dataframe()
+    speakers_df = corpus.get_speakers_dataframe()
+
+    # Trim unnecessary columns
+    conversations_df = conversations_df.drop(columns=['vectors'])
+    utterances_df = utterances_df.drop(columns=['meta.parsed'])
+    speakers_df = speakers_df.drop(columns=['vectors'])  # Adjust as needed
+
+    # Serialize and store the DataFrames in Redis
+    r.set('conversations_df', pickle.dumps(conversations_df))
+    r.set('utterances_df', pickle.dumps(utterances_df))
+    r.set('speakers_df', pickle.dumps(speakers_df))
+else:
+    # Deserialize the DataFrames
+    conversations_df = pickle.loads(conversations_df)
+    utterances_df = pickle.loads(utterances_df)
+    speakers_df = pickle.loads(speakers_df)
 
 # Merge DataFrames
 merged_df = pd.merge(utterances_df, speakers_df, left_on='speaker', right_index=True)
 merged_df = pd.merge(merged_df, conversations_df, left_on='conversation_id', right_index=True)
 
-# Filter based on command line arguments
-if args.min_messages > 0:
-    convo_counts = merged_df['conversation_id'].value_counts()
-    valid_convos = convo_counts[convo_counts >= args.min_messages].index
-    merged_df = merged_df[merged_df['conversation_id'].isin(valid_convos)]
+# Define the get_convo function
+def get_convo(min_messages=0, has_personal_attack=False):
+    # Filter based on criteria
+    if min_messages > 0:
+        convo_counts = merged_df['conversation_id'].value_counts()
+        valid_convos = convo_counts[convo_counts >= min_messages].index
+        df = merged_df[merged_df['conversation_id'].isin(valid_convos)]
+    else:
+        df = merged_df
 
-if args.has_personal_attack:
-    merged_df = merged_df[merged_df['meta.conversation_has_personal_attack'] == True]
+    if has_personal_attack:
+        df = df[df['meta.conversation_has_personal_attack'] == True]
 
-# Process each conversation
-for convo_id in merged_df['conversation_id'].unique():
-    convo_df = merged_df[merged_df['conversation_id'] == convo_id]
-    
-    # Calculate total toxicity and count personal attacks
-    total_toxicity = convo_df['meta.toxicity'].sum()
-    personal_attacks_count = convo_df['meta.comment_has_personal_attack'].sum()
+    # Get a random conversation
+    if not df.empty:
+        convo_id = random.choice(df['conversation_id'].unique())
+        return df[df['conversation_id'] == convo_id]
+    else:
+        return None
 
-    print(f"Conversation ID: {convo_id}")
-    print(f"Total Toxicity: {total_toxicity}")
-    print(f"Personal Attacks: {personal_attacks_count}")
-    for _, row in convo_df.iterrows():
-        speaker_name = row['speaker']  # Assuming 'speaker' column contains speaker names
-        print(f"{speaker_name}: {row['text']}")
+# Get a random conversation based on command line arguments
+convo_df = get_convo(min_messages=args.min_messages, has_personal_attack=args.has_personal_attack)
 
-    print("\n")
-
-# Optionally, save to a file or further process as needed
+print(convo_df)

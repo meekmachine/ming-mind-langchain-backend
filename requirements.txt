@@ -1,4 +1,9 @@
-Flask==2.0.1
+fastapi
 python-dotenv==0.19.1
 langchain
-openaip
+openai
+redis
+convokit
+pandas
+numpy
+pydantic

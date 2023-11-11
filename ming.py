@@ -1,70 +1,64 @@
-"""
-[M]ediation for [I]nterloculative [N]oxiousness and [G]rievences
-This app uses the "Conversations Gone Awry" corpus from the ConvoKit library 
-published by the Cornell University Social Dynamics Lab to test the capabilities
-of llms in recognising "toxicity" and personal attacks in conversations.
-"""
-import os
-import argparse
 import pandas as pd
-from convokit import Corpus, download
 from langchain.llms import HuggingFaceHub
+from convokit import Corpus, download
+from get_convo import get_convo
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+load_dotenv()  # take environment variables from .env.
+# Load a corpus
+corpus = Corpus(filename=download("conversations-gone-awry-corpus"))
 
-def format_conversation(convo_df):
-    formatted_convo = []
-    for _, row in convo_df.iterrows():
-        formatted_convo.append(f"{row['speaker']}: {row['text']}")
-    return "\n".join(formatted_convo)
+# Initialize the LLM
+llm = HuggingFaceHub(repo_id="gpt2", task="text-generation")
 
-def parse_llm_response(response, convo_df):
-    # Example parsing logic based on the structure provided in the prompt
-    # This is a placeholder and should be adapted to your specific response format
-    parsed_response = {
-        "personal_attacks": [],
-        "toxicity_scores": []
-    }
-    for line in response.split('\n'):
-        if "Personal Attack:" in line:
-            parsed_response["personal_attacks"].append(line)
-        elif "Toxicity Score:" in line:
-            parsed_response["toxicity_scores"].append(line)
-    return parsed_response
 
-def main(min_messages, has_personal_attack, num_conversations):
-    hf_api_key = os.getenv("HF_API_KEY")
-    llm = HuggingFaceHub(model="gpt2", api_key=hf_api_key)  # Replace 'gpt2' with your desired model
+# Get a random conversation
+convo_df = get_convo(min_messages=5, has_personal_attack=True)
 
-    corpus = Corpus(filename=download("conversations-gone-awry-corpus"))
-    conversations_df = corpus.get_conversations_dataframe()
-    utterances_df = corpus.get_utterances_dataframe()
-    speakers_df = corpus.get_speakers_dataframe()
+# Create a text representation of the conversation
+convo_text = '\n'.join([f'{row.speaker}: {row.text}' for _, row in convo_df.sort_values('timestamp').iterrows()])
 
-    merged_df = pd.merge(utterances_df, speakers_df, left_on='speaker', right_index=True)
-    merged_df = pd.merge(merged_df, conversations_df, left_on='conversation_id', right_index=True)
+# Define the prompts and their corresponding examples
+prompts = [
+    "Is the conversation toxic?",
+    "Is the conversation personal attack?",
+    "Is the conversation constructive?"
+]
 
-    if has_personal_attack:
-        merged_df = merged_df[merged_df['meta.conversation_has_personal_attack'] == True]
+examples = [
+    "The conversation is toxic if it contains hate speech, bullying, or other offensive language. (Toxic: Yes/No)",
+    "The conversation is personal attack if it contains insults or attacks directed at an individual. (Personal Attack: Yes/No)",
+    "The conversation is constructive if it is respectful and focused on the topic at hand. (Constructive: Yes/No)"
+]
 
-    for convo_id in merged_df['conversation_id'].unique()[:num_conversations]:
-        convo_df = merged_df[merged_df['conversation_id'] == convo_id]
-        formatted_convo = format_conversation(convo_df)
+# Define a method to test the LLM with a prompt
+def test_toxicity(convo_text):
+    prompt = prompts[0]
+    example = examples[0]
+    text = f"{prompt}\n{convo_text}\n{example}"
+    result = llm(text)
+    print(f"Prompt: {prompt}, Result: {result}")
+    return "Toxic" in result
 
-        prompt = f"Analyze the following conversation for personal attacks and toxicity:\n{formatted_convo}\n\nResponse:"
-        response = llm.generate(prompt, max_tokens=150)
-        result = parse_llm_response(response, convo_df)
+def test_personal_attack(convo_text):
+    prompt = prompts[1]
+    example = examples[1]
+    text = f"{prompt}\n{convo_text}\n{example}"
+    result = llm(text)
+    print(f"Prompt: {prompt}, Result: {result}")
+    return "Personal Attack" in result
 
-        print(f"Conversation ID: {convo_id}")
-        print("Result:", result)
-        print("\n")
+def test_constructive(convo_text):
+    prompt = prompts[2]
+    example = examples[2]
+    text = f"{prompt}\n{convo_text}\n{example}"
+    result = llm(text)
+    print(f"Prompt: {prompt}, Result: {result}")
+    return "Constructive" in result
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Process conversation dataset.')
-    parser.add_argument('--min_messages', type=int, default=0, help='Minimum number of messages in a conversation')
-    parser.add_argument('--has_personal_attack', type=bool, default=False, help='Whether the conversation includes a personal attack')
-    parser.add_argument('--num_conversations', type=int, default=10, help='Number of conversations to analyze')
-    args = parser.parse_args()
-    main(args.min_messages, args.has_personal_attack, args.num_conversations)
+# Test the LLM on the conversation data with each prompt
+is_toxic = test_toxicity(convo_text)
+is_personal_attack = test_personal_attack(convo_text)
+is_constructive = test_constructive(convo_text)
+
+print(f"Is Toxic: {is_toxic}, Is Personal Attack: {is_personal_attack}, Is Constructive: {is_constructive}")
