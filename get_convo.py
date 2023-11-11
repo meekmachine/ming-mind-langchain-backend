@@ -16,48 +16,55 @@ has_personal_attack = False
 year = 2018
 load = False # True -> need to download the dataset False -> if not
 
-DATA_DIR = 'data-convs-awry' #put the current dir here
-if load: #args.download:
-    AWRY_ROOT_DIR = download('conversations-gone-awry-corpus',data_dir=DATA_DIR)
-    print(AWRY_ROOT_DIR)
-else: 
-    AWRY_ROOT_DIR = 'data-convs-awry\\conversations-gone-awry-corpus' # if you are
 
-awry_corpus = Corpus(AWRY_ROOT_DIR)
+class ConvoGetter:
+  def __init__(self,AWRY_ROOT_DIR = None) -> None:
+    DATA_DIR = 'data-convs-awry' #put the current dir here
+    if AWRY_ROOT_DIR == None: #args.download:
+      self.AWRY_ROOT_DIR = download('conversations-gone-awry-corpus',data_dir=DATA_DIR)
+    else:
+      self.AWRY_ROOT_DIR = AWRY_ROOT_DIR  
+    self.awry_corpus = Corpus(self.AWRY_ROOT_DIR)
 
-def filter_conversations(corpus, min_messages = 0, has_personal_attack = None,year = None):
-  convos = []
-  for convo in corpus.iter_conversations():
-      # then use iter_utterances at the Conversation level to count the number of comments in each post
-      # (the Conversation-level iter_utterances iterates over Utterances in that Conversation only)
-      n_comments = len([u for u in convo.iter_utterances()])
-      if has_personal_attack != None:
-        convo_has_attack_filter = convo.meta['conversation_has_personal_attack'] == has_personal_attack
-      else:
-        convo_has_attack_filter = True
+  def filter_conversations(self, min_messages = 0, has_personal_attack = None,year = None):
+    convos = []
+    for convo in self.awry_corpus.iter_conversations():
+        # then use iter_utterances at the Conversation level to count the number of comments in each post
+        # (the Conversation-level iter_utterances iterates over Utterances in that Conversation only)
+        n_comments = len([u for u in convo.iter_utterances()])
 
-      if year != None:
-        year_filter = convo.meta['year'] == year
-      else:
-        year_filter = True
-      if (n_comments >= min_messages) and (convo_has_attack_filter) and (year_filter):
-          convos.append(convo)
-  return convos
+        if has_personal_attack != None:
+          convo_has_attack_filter = convo.meta['conversation_has_personal_attack'] == has_personal_attack
+        else:
+          convo_has_attack_filter = True
+
+        if year != None:
+          year_filter = convo.meta['year'] == year
+        else:
+          year_filter = True
+
+        
+        if (n_comments >= min_messages) and (convo_has_attack_filter) and (year_filter): #filter out convos with this if statement
+            convos.append(convo)
+    return convos
 
 # you can add more attributes such as total amount of personal attacks and toxicity
-def convo_to_df(convo):
-  df = convo.get_utterances_dataframe()
-  df['conversation_id'] = convo.id
-  #you can create more attributes here
-  return df
+# although personal attacks and toxicity per message appears
+  def convo_to_df(self,convo):
+    df = convo.get_utterances_dataframe()
+    df['conversation_id'] = convo.id
+    #you can create more attributes here
+    return df
 
-def convos_to_dfs(convos):
-  dfs = []
-  for convo in convos:
-    dfs.append(convo_to_df(convo))
-  return pd.concat(dfs) # do you want to concatinate the dfs or have the seperate dfs be 
+  def convos_to_dfs(self,convos,do_concat = False):
+    dfs = []
+    for convo in convos:
+      dfs.append(self.convo_to_df(convo))
+    if do_concat:
+      dfs = pd.concat(dfs)
+    return dfs
+  
 
-# We can edit this file as we go to use it as a file used to import into other files
-
-
-#filter_conversations(awry_corpus,min_messages=50,has_personal_attack=True)
+  # conversation to text - name, message (one string)
+  # conversation to array of messages
+  
