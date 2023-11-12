@@ -7,8 +7,9 @@ import pickle
 
 # Set up command line arguments
 parser = argparse.ArgumentParser(description='Process conversation dataset.')
-parser.add_argument('--min_messages', type=int, default=0, help='Minimum number of messages in a conversation')
+parser.add_argument('--min_messages', type=int, default=7, help='Minimum number of messages in a conversation')
 parser.add_argument('--has_personal_attack', type=bool, default=False, help='Whether the conversation includes a personal attack')
+parser.add_argument('--min_toxicity', type=float, default=0.3, help='Minimum toxicity score for at least one message in the conversation')
 args = parser.parse_args()
 
 # Connect to Redis
@@ -48,7 +49,7 @@ merged_df = pd.merge(utterances_df, speakers_df, left_on='speaker', right_index=
 merged_df = pd.merge(merged_df, conversations_df, left_on='conversation_id', right_index=True)
 
 # Define the get_convo function
-def get_convo(min_messages=0, has_personal_attack=False):
+async def get_convo(min_messages=7, has_personal_attack=False, min_toxicity=0.5):
     # Filter based on criteria
     if min_messages > 0:
         convo_counts = merged_df['conversation_id'].value_counts()
@@ -60,14 +61,20 @@ def get_convo(min_messages=0, has_personal_attack=False):
     if has_personal_attack:
         df = df[df['meta.conversation_has_personal_attack'] == True]
 
+    # Filter for conversations with at least one message having toxicity above the threshold
+    if min_toxicity > 0.0:
+        toxic_convo_ids = df[df['meta.toxicity'] >= min_toxicity]['conversation_id'].unique()
+        df = df[df['conversation_id'].isin(toxic_convo_ids)]
+
     # Get a random conversation
     if not df.empty:
         convo_id = random.choice(df['conversation_id'].unique())
-        return df[df['conversation_id'] == convo_id]
+        return df[df['conversation_id'] == convo_id].sort_values('timestamp', ascending=True).drop(columns=['meta.parsed'])
     else:
         return None
 
 # Get a random conversation based on command line arguments
-convo_df = get_convo(min_messages=args.min_messages, has_personal_attack=args.has_personal_attack)
+convo_df = get_convo(min_messages=args.min_messages, has_personal_attack=args.has_personal_attack, min_toxicity=args.min_toxicity)
 
 print(convo_df)
+ 

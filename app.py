@@ -1,5 +1,5 @@
 import uuid
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from langchain.agents import initialize_agent, load_tools
 from langchain.llms import HuggingFaceHub
@@ -9,19 +9,19 @@ from langchain.globals import set_llm_cache
 import os
 import redis
 import uuid
+from get_convo import get_convo
 from airtable import Airtable
-
-redis_url = "redis://localhost:6379"
+import uvicorn
+import datetime
 
 load_dotenv()  # take environment variables from .env.
 
 app = FastAPI()
-
 # Define the memory store
 redis_db = redis.Redis(host='localhost', port=6379, db=0)
 
 # Define the language model
-llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature": 0.1, "max_length": 200}, huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_KEY"))
+llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature": 0.1, "max_length": 200}, huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"))
 
 # Initialize the agent
 agent = initialize_agent(llm=llm, tools=[], agent="conversational-react-description", verbose=True)
@@ -30,7 +30,7 @@ agent = initialize_agent(llm=llm, tools=[], agent="conversational-react-descript
 sessions = {}
 
 # Initialize Airtable
-airtable = Airtable("AIRTABLE_API_KEY")  # replace with your actual base key and API key
+airtable = Airtable(api_key=os.getenv("AIRTABLE_API_KEY"), base_id="appdqeUDRi9TsyVPA/tblXkyhBNPPtP2DXC")  
 
 class Query(BaseModel):
     text: str
@@ -71,6 +71,17 @@ async def run(query: Query, session_id: str = None):
     except Exception as e:
         return {"error": str(e)}
 
+@app.get("/get-convo")
+async def get_conversation(min_messages: int = 10, has_personal_attack: bool = True, has_message_toxicity: bool = True):
+    print("Endpoint hit with parameters:", min_messages, has_personal_attack, has_message_toxicity)
+    try:
+        convo_df = await get_convo(min_messages, has_personal_attack)
+        if convo_df is not None:
+            return convo_df.to_dict(orient='records')
+        else:
+            raise HTTPException(status_code=404, detail="No conversation found matching the criteria")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/clear")
 async def clear(session_id: str):
@@ -99,15 +110,15 @@ async def get_overall_evaluation(query: Query, session_id: str = None):
         # Get the newest row from the corresponding table
         newest_row = get_newest_row('table1')  # replace 'table1' with your actual table name
 
-        if newest_row is not None:
-            # Use the newest row as the prompt
-            prompt = newest_row['fields']['prompt']
+        # if newest_row is not None:
+        #     # Use the newest row as the prompt
+        #     prompt = newest_row['fields']['prompt']
 
-            # Run the agent with the prompt
-            result = agent.run("Method 1: " + prompt)
-            return {"result": result}
-        else:
-            return {"error": "No rows in table"}
+        #     # Run the agent with the prompt
+        #     result = agent.run("Method 1: " + prompt)
+        #     return {"result": result}
+        # else:
+        #     return {"error": "No rows in table"}
     except Exception as e:
         return {"error": str(e)}
 
@@ -136,3 +147,5 @@ async def method2(query: Query, session_id: str = None):
             return {"error": "No rows in table"}
     except Exception as e:
         return {"error": str(e)}
+    
+uvicorn.run(app, host="0.0.0.0", port=8000)
