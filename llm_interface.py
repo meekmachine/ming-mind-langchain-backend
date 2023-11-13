@@ -1,14 +1,31 @@
+import json
 import os
 from pyairtable import Table
 import datetime
 from dotenv import load_dotenv
 from langchain.llms import HuggingFaceHub
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts.few_shot import FewShotPromptTemplate
+from langchain.prompts.prompt import PromptTemplate
+
 
 load_dotenv()  # take environment variables from .env.
 
 airtable_keys = {
     "InitialValidation": "tbl3PFTH0wovOXlLY",
+    "AwrConvoDescription": "tblPiiHeKCkynTJgC",
 }
+
+def from_js(js_string):
+    # Replace backticks with double quotes
+    json_string = js_string.replace('`', '"')
+    json_string = json_string.replace('\n', '\\n')
+
+    # Replace single quotes around keys and values with double quotes
+    json_string = json_string.replace("'", '"')
+
+    # Now, parse the JSON string
+    return json.loads(json_string)
 
 async def get_first_row(table_name):
     try:
@@ -35,12 +52,48 @@ async def get_prompt(prompt: str):
         return {"error": "No rows in table"}
 
 async def intitial_validation(input):
-    # Define the language model
-    prompt, examples, model_name = await get_prompt("InitialValidation")
-    print(prompt, model_name)
-    llm = HuggingFaceHub(repo_id=model_name, model_kwargs={"temperature": 0.1, "max_length": 200}, huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"))
-    print(llm.run(f"{prompt} Examples: {examples} {input}"))
-    return 1 if llm.run(f"{prompt} {input}")[0] == '1' else 0
+    pprompt, examples, model_name = await get_prompt("InitialValidation")
+    print("================================")
+    # example_prompt = PromptTemplate(input_variables=["input", "expected_output"], template="{expected_output}")
+    # q = json.loads(examples)
+
+    # prompt = FewShotPromptTemplate(
+    #     examples = q,
+    #     example_prompt=example_prompt,
+    #     suffix="{input}",
+    #     input_variables=["input", "expected_output"],
+    # )
+    prompt = PromptTemplate.from_template(f"{pprompt} \n {input}")
+    print(prompt)
+    model = ChatOpenAI(openai_apibe_con_key=os.getenv("OPENAI_API_KEY"))
+    chain = prompt | modelvo
+    print(prompt)
+    result = chain.invoke(input)
+    print("================================")
+    print(result)
+    return result.content
+
+async def describe_convo(input):
+    pprompt, examples, model_name = await get_prompt("AwryConvoDescription")
+    print("================================")
+    # example_prompt = PromptTemplate(input_variables=["input", "expected_output"], template="{expected_output}")
+    # q = json.loads(examples)
+
+    # prompt = FewShotPromptTemplate(
+    #     examples = q,
+    #     example_prompt=example_prompt,
+    #     suffix="{input}",
+    #     input_variables=["input", "expected_output"],
+    # )
+    prompt = PromptTemplate.from_template(f"{pprompt} \n {input}")
+    print(prompt)
+    model = ChatOpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
+    chain = prompt | model
+    print(prompt)
+    result = chain.invoke(input)
+    print("================================")
+    print(result)
+    return result.content
 
 def initial_validation_failed(llm, input):
     prompt = get_prompt("InitialValidationFailed")
@@ -50,9 +103,9 @@ def parse_messages(llm, input):
     prompt = get_prompt("ParseMessages")
     return llm.run(f"{prompt} {input}")
 
-def identify_interlocutors(llm, inout):
-    prompt = get_prompt("IdentifyInterlocutors")
-    return llm.run(f"{prompt} {input}")
+# def identify_interlocutors(llm, inout):
+#     prompt = get_prompt("IdentifyInterlocutors")
+#     return llm.run(f"{prompt} {input}")
 
 def get_overall_evaluation(llm, input):
     prompt = get_prompt("OverallEvaluation")

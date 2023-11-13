@@ -13,7 +13,7 @@ from get_convo import get_convo
 from airtable import Airtable
 import uvicorn
 import datetime
-from llm_interface import intitial_validation
+from llm_interface import intitial_validation, describe_convo
 
 load_dotenv()  # take environment variables from .env.
 
@@ -110,11 +110,25 @@ async def clear(session_id: str):
 @app.post("/is-mingable")
 async def is_mingable(query: Query):
     try:
-       print(query.text)
-       response = await intitial_validation(query.text)
-        
+        print(query.text)
+        response = await intitial_validation(query.text)
+        if response == "1":
+            return {"valid": 1}
+        else:
+            return "Not MINGable."
     except Exception as e:
+        print(e)
+        return {"error": str(e)}
+    
+@app.post("/awry-describer")
+async def awry_describer(query: Query):
+    try:
+        print(query.conversation)
+        return await describe_convo(query.conversation)
+
+    except Exception as e:
+        print(e)
         return {"error": str(e)}
     
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="debug")
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="debug")    
