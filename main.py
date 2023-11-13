@@ -30,6 +30,8 @@ agent = initialize_agent(llm=llm, tools=[], agent="conversational-react-descript
 # Define a dictionary to store sessions
 sessions = {}
 
+class AwryQuery(BaseModel):
+    data: str
 # Set up CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -119,12 +121,12 @@ async def is_mingable(query: Query):
     except Exception as e:
         print(e)
         return {"error": str(e)}
-    
+
 @app.post("/awry-describer")
-async def awry_describer(query: Query):
+async def awry_describer(query: AwryQuery):
     try:
-        print(query.conversation)
-        return await describe_convo(query.conversation)
+        print(query)
+        return await describe_convo(query.data)
 
     except Exception as e:
         print(e)

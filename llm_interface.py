@@ -13,7 +13,7 @@ load_dotenv()  # take environment variables from .env.
 
 airtable_keys = {
     "InitialValidation": "tbl3PFTH0wovOXlLY",
-    "AwrConvoDescription": "tblPiiHeKCkynTJgC",
+    "AwryConvoDescription": "tblPiiHeKCkynTJgC",
 }
 
 def from_js(js_string):
@@ -65,8 +65,8 @@ async def intitial_validation(input):
     # )
     prompt = PromptTemplate.from_template(f"{pprompt} \n {input}")
     print(prompt)
-    model = ChatOpenAI(openai_apibe_con_key=os.getenv("OPENAI_API_KEY"))
-    chain = prompt | modelvo
+    model = ChatOpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
+    chain = prompt | model
     print(prompt)
     result = chain.invoke(input)
     print("================================")
@@ -74,23 +74,12 @@ async def intitial_validation(input):
     return result.content
 
 async def describe_convo(input):
-    pprompt, examples, model_name = await get_prompt("AwryConvoDescription")
+    pprompt = await get_prompt("AwryConvoDescription")
     print("================================")
-    # example_prompt = PromptTemplate(input_variables=["input", "expected_output"], template="{expected_output}")
-    # q = json.loads(examples)
 
-    # prompt = FewShotPromptTemplate(
-    #     examples = q,
-    #     example_prompt=example_prompt,
-    #     suffix="{input}",
-    #     input_variables=["input", "expected_output"],
-    # )
-    prompt = PromptTemplate.from_template(f"{pprompt} \n {input}")
-    print(prompt)
-    model = ChatOpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
-    chain = prompt | model
-    print(prompt)
-    result = chain.invoke(input)
+    print(pprompt)
+    llm = ChatOpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
+    result = llm.invoke( f"{pprompt} \n {input}")
     print("================================")
     print(result)
     return result.content
