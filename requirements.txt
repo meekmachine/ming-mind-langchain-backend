@@ -7,3 +7,7 @@ convokit
 pandas
 numpy
 pydantic
+dotenv
+pyairtable
+firebase-admin
+torch

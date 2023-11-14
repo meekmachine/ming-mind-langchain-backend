@@ -1,20 +1,14 @@
 import json
 import os
 from pyairtable import Table
-import datetime
 from dotenv import load_dotenv
 from langchain.llms import HuggingFaceHub
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts.few_shot import FewShotPromptTemplate
 from langchain.prompts.prompt import PromptTemplate
 
-
 load_dotenv()  # take environment variables from .env.
 
-airtable_keys = {
-    "InitialValidation": "tbl3PFTH0wovOXlLY",
-    "AwryConvoDescription": "tblPiiHeKCkynTJgC",
-}
 
 def from_js(js_string):
     # Replace backticks with double quotes
@@ -76,7 +70,6 @@ async def intitial_validation(input):
 async def describe_convo(input):
     pprompt = await get_prompt("AwryConvoDescription")
     print("================================")
-
     print(pprompt)
     llm = ChatOpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
     result = llm.invoke( f"{pprompt} \n {input}")

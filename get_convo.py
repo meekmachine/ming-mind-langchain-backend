@@ -69,7 +69,7 @@ async def get_convo(min_messages=7, has_personal_attack=False, min_toxicity=0.5)
     # Get a random conversation
     if not df.empty:
         convo_id = random.choice(df['conversation_id'].unique())
-        return df[df['conversation_id'] == convo_id].sort_values('timestamp', ascending=True).drop(columns=['meta.parsed'])
+        return df[df['conversation_id'] == convo_id].sort_values('timestamp', ascending=True)
     else:
         return None
 
