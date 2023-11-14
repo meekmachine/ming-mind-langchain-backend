@@ -5,37 +5,42 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 # Initialize Firebase
 cred = credentials.Certificate(".keys/ming-527ed-firebase-adminsdk-z38ui-27b7e06411.json")
-firebase_admin.initialize_app(cred)
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-def fetch_embeddings_from_firebase():
+def fetch_embeddings_from_firebase(verbose=True):
     # Fetch embeddings from Firebase
-    # Assuming embeddings are stored in a collection named 'embeddings'
     embeddings = {}
-    docs = db.collection('embeddings').stream()
+    docs = db.collection('awry_convos').stream()
     for doc in docs:
-        embeddings[doc.id] = doc.to_dict()
+        data = doc.to_dict()
+        if 'embedding' in data:
+            embeddings[doc.id] = data['embedding']
+            if verbose:
+                print(f"Fetched embedding for conversation {doc.id}")
     return embeddings
 
 def calculate_cosine_similarity(embedding1, embedding2):
-    # Calculate cosine similarity between two embeddings
     return cosine_similarity([embedding1], [embedding2])[0][0]
 
-def update_similarity_scores(new_embeddings, existing_embeddings):
-    # Calculate and update similarity scores
+def update_similarity_scores(new_embeddings, existing_embeddings, verbose=True):
     for new_id, new_emb in new_embeddings.items():
+        similarity_scores = {}
         for existing_id, existing_emb in existing_embeddings.items():
-            similarity = calculate_cosine_similarity(new_emb, existing_emb)
-            # Update the similarity score in Firebase
-            # You might want to structure how you store these similarity scores
-            # For example, in a separate collection or as a subcollection
-            db.collection('similarities').document(f'{new_id}_{existing_id}').set({'score': similarity})
+            if new_id != existing_id:
+                similarity = calculate_cosine_similarity(new_emb, existing_emb)
+                similarity_scores[existing_id] = similarity
+                if verbose:
+                    print(f"Calculated similarity between {new_id} and {existing_id}: {similarity}")
+        db.collection('awry_convos').document(new_id).update({'similarities': similarity_scores})
+        if verbose:
+            print(f"Updated similarity scores for conversation {new_id}")
 
 def main():
     existing_embeddings = fetch_embeddings_from_firebase()
     new_embeddings = {}  # Fetch or calculate new embeddings
 
-    # Update similarity scores
     update_similarity_scores(new_embeddings, existing_embeddings)
 
 if __name__ == "__main__":
