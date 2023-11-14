@@ -1,5 +1,5 @@
 
-## 明🧠🦜⛓️🍑
+# 明🧠🦜⛓️🍑
 # Multi-Modal [M]ediator for [I]nterlocutive [N]oxiousness and [G]rievances 
 ## MING | an exploration of AI conflict mediation by The Knight Foundation School of Computing and Information Sciences at Florida International University.
 
