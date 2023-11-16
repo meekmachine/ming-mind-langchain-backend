@@ -13,7 +13,7 @@ from get_convo import get_convo
 from airtable import Airtable
 import uvicorn
 import datetime
-from llm_interface import intitial_validation, describe_convo
+from llm_interface import *
 
 load_dotenv()  # take environment variables from .env.
 
@@ -92,28 +92,13 @@ async def clear(session_id: str):
     except Exception as e:
         return {"error": str(e)}
 
-# @app.get("/method1")
-# async def get_overall_evaluation(query: Query, session_id: str = None):
-#     try:
-#         # Get the session
-#         cache, error = get_session(session_id)
-#         if error:
-#             return {"error": error}
 
-#         # Set the cache for the current session
-#         agent.cache = cache
-
-#         # Get the newest row from the corresponding table
-#         newest_row = get_newest_row('table1')  # replace 'table1' with your actual table name
-
-#     except Exception as e:
-#         return {"error": str(e)}
 
 @app.post("/is-mingable")
 async def is_mingable(query: Query):
     try:
         print(query.text)
-        response = await intitial_validation(query.text)
+        response = await initial_validation(query.text)
         if response == "1":
             return {"valid": 1}
         else:
@@ -131,6 +116,28 @@ async def awry_describer(query: AwryQuery):
     except Exception as e:
         print(e)
         return {"error": str(e)}
+
+@app.post("/id-interlocutors")
+async def id_interlocutors(query: Query):
+    try:
+        print(query.text)
+        return await identify_interlocutors(query.text)
+        
+    except Exception as e:
+        print(e)
+        return {"error": str(e)}
+
+@app.post("/feedback")
+async def feedback(query: Query):
+    try:
+        print(query.text)
+        return await overall_evaluation(query.text)
+    
+    except Exception as e:
+        print(e)
+        return {"error": str(e)}
     
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="debug")    
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="debug")
+
+
