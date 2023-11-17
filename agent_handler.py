@@ -17,7 +17,6 @@ load_dotenv()
 
 class AgentHandler:
     def __init__(self):
-
         self.chains = {}
 
     def create_agent(self, session_id=None):
@@ -48,7 +47,7 @@ Assistant:"""
             raise ValueError(f"No agent found for session ID: {session_id}")
 
         chain = self.chains[session_id]
-
+        print(human_input)
         # Add the human's input to the chat history
         chain.memory.chat_memory.add_user_message(human_input)
 
