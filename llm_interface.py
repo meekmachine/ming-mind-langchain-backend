@@ -16,10 +16,12 @@ async def parse_messages(input_text):
     handler = AirtablePromptHandler()
     return await handler.process_prompt("ParseMessages", input_text)
 
-async def overall_evaluation(input_text):
-    handler = AirtablePromptHandler()
-    return await handler.process_prompt("OverallEvaluation", input_text)
 
-async def identify_interlocutors(input_text):
-    handler = AirtablePromptHandler()
-    return await handler.process_prompt("IdentifyInterlocutors", input_text)
+async def id_interlocutors(input_text):
+    handler = AirtablePromptHandler(create_new_agent=True)
+    response, session_id = await handler.process_prompt("IdentifyInterlocutors", input_text)
+    return response, session_id
+
+async def overall_evaluation(input_text, session_id):
+    handler = AirtablePromptHandler(use_agent=True, session_id=session_id)
+    return await handler.process_prompt("OverallEvaluation", input_text)

@@ -43,6 +43,7 @@ app.add_middleware(
 
 class Query(BaseModel):
     text: str
+    session_id: str = None
 
 def get_session(session_id):
     if session_id is None:
@@ -97,9 +98,9 @@ async def clear(session_id: str):
 @app.post("/is-mingable")
 async def is_mingable(query: Query):
     try:
-        print(query.text)
         response = await initial_validation(query.text)
-        if response == "1":
+        print(response)
+        if response[0] == "1":
             return {"valid": 1}
         else:
             return "Not MINGable."
@@ -118,26 +119,25 @@ async def awry_describer(query: AwryQuery):
         return {"error": str(e)}
 
 @app.post("/id-interlocutors")
-async def id_interlocutors(query: Query):
+async def api_id_interlocutors(query: Query):
     try:
-        print(query.text)
-        return await identify_interlocutors(query.text)
-        
+        result, session_id = await id_interlocutors(query.text)
+        return {"result": result, "session_id": session_id}
     except Exception as e:
-        print(e)
         return {"error": str(e)}
 
 @app.post("/feedback")
-async def feedback(query: Query):
+async def api_feedback(query: Query):
     try:
-        print(query.text)
-        return await overall_evaluation(query.text)
-    
+        if not query.session_id:
+            raise HTTPException(status_code=400, detail="Session ID is required")
+        result = await overall_evaluation(query.text, query.session_id)
+        return {"result": result}
     except Exception as e:
-        print(e)
         return {"error": str(e)}
-    
+
+
+  
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True, log_level="debug")
-
 
