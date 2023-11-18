@@ -27,5 +27,5 @@ async def id_interlocutors(input_text):
     return response, session_id
 
 async def overall_evaluation(input_text, session_id, interlocutor):
-    handler = AirtablePromptHandler(use_agent=True)
-    return await handler.process_prompt("Feedback", input_text, interlocutor=interlocutor, session_id=session_id)
+    handler = AirtablePromptHandler(use_agent=True, session_id=session_id)
+    return await handler.process_prompt("Feedback", input_text, interlocutor=interlocutor)
