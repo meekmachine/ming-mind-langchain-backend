@@ -1,3 +1,10 @@
+import os
+from pyairtable import Table
+from dotenv import load_dotenv
+from agent_handler import AgentHandler
+
+load_dotenv()
+
 class AirtablePromptHandler:
     def __init__(self, use_agent=False, create_new_agent=False, session_id=None):
         self.api_key = os.getenv("AIRTABLE_API_KEY")
@@ -20,31 +27,27 @@ class AirtablePromptHandler:
             print(f"Error in get_first_row: {e}")
             return None
 
-    async def process_prompt(self, table_name, input_text):
+    async def process_prompt(self, table_name, input_text, session_id=None, interlocutor=None):
         row = await self.get_first_row(table_name)
         if not row:
             return {"error": "No rows in table"}
 
-        prompt_text = row['fields'].get('Prompt', '')
-        examples_text = row['fields'].get('Examples', '')
-
-        # Concatenate examples text with prompt text if examples are present
-        full_prompt = f"{examples_text}\n{prompt_text}\n{input_text}" if examples_text else f"{prompt_text}\n{input_text}"
-
+        prompt_text = row['fields']['Prompt']
+        if interlocutor:
+            prompt_text = prompt_text.replace("INTERLOCUTOR", interlocutor)
         response = ""
-        if self.use_agent and self.session_id:
-            response = self.agent_handler.run_agent(self.session_id, full_prompt)
+
+        if self.use_agent and session_id:
+            response = self.agent_handler.run_agent(session_id, f"{prompt_text} \n {input_text}")
         elif self.create_new_agent:
-            self.session_id = self.agent_handler.create_agent()
-            response = self.agent_handler.run_agent(self.session_id, full_prompt)
+            new_session_id = self.agent_handler.create_agent()
+            response = self.agent_handler.run_agent(new_session_id, f"{prompt_text} \n INPUT:'''{input_text}'''")
+            return response, new_session_id
         else:
-            response = self.agent_handler.llm(full_prompt)
+            response = self.agent_handler.llm(f"{prompt_text} \n {input_text}")
 
         await self.save_response(row['id'], response)
-        if self.create_new_agent:
-            return response, self.session_id
-        else:
-            return response
+        return response
 
     async def save_response(self, uid, result):
         self.responses_table.create({"UID": uid, "Result": result})
