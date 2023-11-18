@@ -122,21 +122,43 @@ async def awry_describer(query: AwryQuery):
 @app.post("/id-interlocutors")
 async def api_id_interlocutors(query: Query):
     try:
-        result, session_id = await id_interlocutors(query.text)
-        return {"result": result, "session_id": session_id}
+        result = await id_interlocutors(query.text)
+        return {"result": result, "session_id": 'session_id'}
     except Exception as e:
         return {"error": str(e)}
+
+class TimeSeriesQuery(BaseModel):
+    interlocutor: str
+    text: str
 
 @app.post("/feedback")
 async def api_feedback(query: Query):
     try:
-        if not query.session_id:
-            raise HTTPException(status_code=400, detail="Session ID is required")
-        result = await overall_evaluation(query.text, query.session_id, query.interlocutor)
+        # Create a dictionary for additional variables, including 'interlocutor'
+        additional_vars = {"interlocutor": query.interlocutor}
+        
+        # Call the 'overall_evaluation' function with the new arguments
+        result = await overall_evaluation(input_text=query.text, additional_vars=additional_vars)
+        
         return {"result": result}
     except Exception as e:
         return {"error": str(e)}
 
+class TimeSeriesQuery(BaseModel):
+    participant1: str
+    participant2: str
+    factor1: str
+    factor2: str
+    text: str
+
+@app.post("/timeseries")
+async def get_timeseries_data(query: TimeSeriesQuery):
+    try:
+        # Implement logic to process timeseries data based on the query parameters
+        # For now, we'll just return the query parameters as a placeholder
+        return {"participant1": query.participant1, "participant2": query.participant2, "factor1": query.factor1, "factor2": query.factor2, "text": query.text}
+    except Exception as e:
+        return {"error": str(e)}
 
   
 if __name__ == "__main__":

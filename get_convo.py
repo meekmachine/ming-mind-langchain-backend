@@ -13,7 +13,7 @@ parser.add_argument('--min_toxicity', type=float, default=0.3, help='Minimum tox
 args = parser.parse_args()
 
 # Connect to Redis
-r = redis.Redis(host='localhost', port=6379, db=0)
+r = redis.Redis(host='localhost', port=6379, db=1)
 
 # Check if DataFrames are in Redis
 conversations_df = r.get('conversations_df')
