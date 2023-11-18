@@ -44,6 +44,7 @@ app.add_middleware(
 class Query(BaseModel):
     text: str
     session_id: str = None
+    interlocutor: str = None
 
 def get_session(session_id):
     if session_id is None:
@@ -131,7 +132,7 @@ async def api_feedback(query: Query):
     try:
         if not query.session_id:
             raise HTTPException(status_code=400, detail="Session ID is required")
-        result = await overall_evaluation(query.text, query.session_id)
+        result = await overall_evaluation(query.text, query.session_id, query.interlocutor)
         return {"result": result}
     except Exception as e:
         return {"error": str(e)}
