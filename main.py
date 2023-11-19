@@ -152,11 +152,12 @@ class TimeSeriesQuery(BaseModel):
     text: str
 
 @app.post("/timeseries")
-async def get_timeseries_data(query: TimeSeriesQuery):
+async def timeseries(query: TimeSeriesQuery):
     try:
         # Implement logic to process timeseries data based on the query parameters
         # For now, we'll just return the query parameters as a placeholder
-        return {"participant1": query.participant1, "participant2": query.participant2, "factor1": query.factor1, "factor2": query.factor2, "text": query.text}
+        additional_vars = {"participant1": query.participant1, "participant2": query.participant2, "factor1": query.factor1, "factor2": query.factor2, "text": query.text}
+        return await handle_timeseries(text=query.text, additional_vars=additional_vars)
     except Exception as e:
         return {"error": str(e)}
 

@@ -26,11 +26,11 @@ async def overall_evaluation(input_text, additional_vars):
         additional_vars=additional_vars
     )           
 
-async def handle_timeseries(input_text, participants, factors):
+async def handle_timeseries(text, additional_vars):
     # Here, we assume 'Timeseries' is the name of the table in Airtable
     return await airtable_prompt_handler.process_prompt(
         "Timeseries", 
-        input_text, 
-        additional_vars={"participants": participants, "factors": factors}
+        input_text=text, 
+        additional_vars=additional_vars
     )
 # Additional functions can follow the same pattern.
