@@ -1,10 +1,7 @@
 import os
 import uuid
-from langchain.chat_models import ChatOpenAI
 from langchain.llms import HuggingFaceHub
-from langchain.memory import RedisChatMessageHistory, ConversationBufferMemory
-from langchain.chains import LLMChain
-from langchain.prompts import ChatPromptTemplate
+from langchain.chat_models import ChatOpenAI
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -12,63 +9,57 @@ load_dotenv()
 
 class AgentHandler:
     def __init__(self):
-        self.chains = {}
+        self.sessions = {}
 
-    def create_agent(self, session_id=None, model_name=None, temperature=None):
-
-        session_id = str(uuid.uuid4())
-
-        # Initialize RedisChatMessageHistory and wrap it in ConversationBufferMemory
-        redis_history = RedisChatMessageHistory(session_id=session_id)
-        memory = ConversationBufferMemory(chat_history=redis_history, token_limit=4094)
-
-        # Define the prompt template
-        template = """{history}\nHuman: {input}\nAssistant:"""
-        prompt = ChatPromptTemplate.from_template(template)
-
-        # Initialize the LLM based on model name and temperature
-        if model_name:
-            if model_name == "gpt-3.5-turbo" or not temperature:
-                llm = ChatOpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"), model_name=model_name)
-            else:
-                llm = HuggingFaceHub(model_name=model_name, temperature=temperature, api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"))
-        else:
-            llm = ChatOpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
-
-        # Create and store the chain
-        self.chains[session_id] = LLMChain(prompt=prompt, llm=llm, verbose=True, memory=memory)
-
+    def create_session(self, session_id=None, model_name=None, temperature=None):
+        session_id = session_id if session_id else str(uuid.uuid4())
+        self.sessions[session_id] = {
+            "variables": {},
+            "model": self._initialize_llm(model_name, temperature),
+            "text": ""  # To store the conversation text
+        }
         return session_id
 
-    def run_agent(self, session_id, human_input):
-        if session_id not in self.chains:
-            raise ValueError(f"No agent found for session ID: {session_id}")
+    def _initialize_llm(self, model_name, temperature):
+        if model_name:
+            if model_name == "gpt-3.5-turbo":
+                return ChatOpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"), model_name=model_name)
+            else:
+                return HuggingFaceHub(model_name=model_name, temperature=temperature, api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"))
+        else:
+            return ChatOpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
 
-        chain = self.chains[session_id]
-        chain.memory.chat_memory.add_user_message(human_input)
+    def run_query(self, session_id, prompt):
+        if session_id not in self.sessions:
+            raise ValueError(f"No session found for session ID: {session_id}")
 
-        # Retrieve the conversation history as a string
-        history_text = chain.memory.get_memory_string() if hasattr(chain.memory, 'get_memory_string') else ''
+        session = self.sessions[session_id]
+        for key, value in session["variables"].items():
+            prompt = prompt.replace(f"{{{key}}}", value)
 
-        # Manually trim the history if it's too long
-        max_tokens = 4096  # Adjust this limit based on the model's capabilities
-        while len(history_text.split()) > max_tokens:
-            # Remove the oldest message until the token count is within limits
-            messages = history_text.split('\n')
-            messages.pop(0)  # Remove the oldest message
-            history_text = '\n'.join(messages)
-
-        # Construct the prompt with the trimmed history and new input
-        prompt = f"{history_text}\nHuman: {human_input}\nAssistant:"
-
-        # Run the chain with the constructed prompt
-        response = chain.run({"input": prompt})
-        response_content = response.content if hasattr(response, 'content') else str(response)
-        chain.memory.chat_memory.add_ai_message(response_content)
-        return response_content
-
-
-    def llm(self, input_text):
-        llm = ChatOpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
-        result = llm.invoke(input_text)
+        result = session["model"].invoke(prompt)
         return result.content
+
+    def update_session_variables(self, session_id, variables):
+        if session_id not in self.sessions:
+            raise ValueError(f"No session found for session ID: {session_id}")
+
+        self.sessions[session_id]["variables"].update(variables)
+
+    def store_text(self, session_id, text):
+        if session_id not in self.sessions:
+            raise ValueError(f"No session found for session ID: {session_id}")
+
+        self.sessions[session_id]["text"] = text
+
+    def remove_session(self, session_id):
+        if session_id in self.sessions:
+            del self.sessions[session_id]
+
+    def simple_llm_query(self, input_text):
+        llm = ChatOpenAI(openai_api_key=os.getenv("OPENAI_API_KEY"))
+        return llm.invoke(input_text).content
+
+# Usage example
+# agent_handler = AgentHandler()
+# simple_result = agent_handler.simple_llm_query("Your prompt here")

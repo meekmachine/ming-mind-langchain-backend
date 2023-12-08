@@ -31,7 +31,6 @@ class AirtablePromptHandler:
             print(f"Error in get_random_active_row: {e}")
             raise
 
-
     async def process_prompt(self, table_name, input_text, session_id=None, additional_vars=None, use_personality=False):
         row = await self.get_random_active_row(table_name)
         prompt_text = row['fields']['Prompt']
@@ -55,29 +54,20 @@ class AirtablePromptHandler:
 
         response = ""
         if self.use_agent and session_id:
-            response = self.agent_handler.run_agent(session_id, f"{prompt_text} \n {input_text}")
+            response = self.agent_handler.run_query(session_id, f"{prompt_text} \n {input_text}")
         elif self.create_new_agent:
-            new_session_id = self.agent_handler.create_agent()
-            response = self.agent_handler.run_agent(new_session_id, f"{prompt_text} \n {input_text}")
+            new_session_id = self.agent_handler.create_session()
+            response = self.agent_handler.run_query(new_session_id, f"{prompt_text} \n {input_text}")
             return response, new_session_id
         else:
-            response = self.agent_handler.llm(f"{prompt_text} \n {input_text}")
-
-        await self.save_response(row['id'], response)
-        return response
-        
-        response = ""
-        if self.use_agent and session_id:
-            response = self.agent_handler.run_agent(session_id, f"{prompt_text} \n {input_text}")
-        elif self.create_new_agent:
-            new_session_id = self.agent_handler.create_agent()
-            response = self.agent_handler.run_agent(new_session_id, f"{prompt_text} \n {input_text}")
-            return response, new_session_id
-        else:
-            response = self.agent_handler.llm(f"{prompt_text} \n {input_text}")
+            response = self.agent_handler.simple_llm_query(f"{prompt_text} \n {input_text}")
 
         await self.save_response(row['id'], response)
         return response
 
     async def save_response(self, uid, result):
         self.responses_table.create({"UID": uid, "Result": result})
+
+# Usage example
+# airtable_prompt_handler = AirtablePromptHandler()
+# response = await airtable_prompt_handler.process_prompt("YourTableName", "YourInputText", use_personality=True)
