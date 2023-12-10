@@ -5,7 +5,7 @@ import random
 import redis
 import pickle
 import os
-
+from urllib.parse import urlparse
 # Set up command line arguments
 parser = argparse.ArgumentParser(description='Process conversation dataset.')
 parser.add_argument('--min_messages', type=int, default=7, help='Minimum number of messages in a conversation')
@@ -14,7 +14,9 @@ parser.add_argument('--min_toxicity', type=float, default=0.3, help='Minimum tox
 args = parser.parse_args()
 
 # Connect to Redis
-r = redis.from_url(os.environ.get("REDIS_URL"))
+url = urlparse(os.environ.get("REDIS_URL"))
+r = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=True, ssl_cert_reqs=None)
+#r = redis.from_url(os.environ.get("REDIS_URL"))
 #r = redis.Redis(host='localhost', port=6379, db=1)
 
 # Check if DataFrames are in Redis
