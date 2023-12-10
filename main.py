@@ -14,12 +14,14 @@ from airtable import Airtable
 import uvicorn
 import datetime
 from llm_interface import *
+from urllib.parse import urlparse
 
 load_dotenv()  # take environment variables from .env.
 
 app = FastAPI()
 # Define the memory store
-redis_db = redis.Redis(host='localhost', port=6379, db=0)
+url = urlparse(os.environ.get("REDIS_URL"))
+redis_db = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=True, ssl_cert_reqs=None)
 
 # Define the language model
 llm = HuggingFaceHub(repo_id="google/flan-t5-xxl", model_kwargs={"temperature": 0.1, "max_length": 200}, huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN"))
