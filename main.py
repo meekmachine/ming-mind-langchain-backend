@@ -165,6 +165,6 @@ async def timeseries(query: TimeSeriesQuery):
 
   
 if __name__ == "__main__":
-    print(os.environ.get("PORT"),type(os.environ.get("PORT")))
-    uvicorn.run("main:app", host="0.0.0.0", port= os.environ.get("PORT") , reload=True, log_level="debug")
+    #print(os.environ.get("PORT"),type(os.environ.get("PORT")))
+    uvicorn.run("main:app", host="0.0.0.0", port= int(os.environ.get("PORT")) , reload=True, log_level="debug")
 
