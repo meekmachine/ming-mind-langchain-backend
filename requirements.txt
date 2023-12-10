@@ -1,0 +1,13 @@
+fastapi
+python-dotenv
+langchain
+openai
+redis
+convokit
+pandas
+numpy
+pydantic
+pyairtable
+airtable
+huggingface-hub
+uvicorn
