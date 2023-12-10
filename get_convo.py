@@ -47,7 +47,8 @@ else:
 # Merge DataFrames
 merged_df = pd.merge(utterances_df, speakers_df, left_on='speaker', right_index=True)
 merged_df = pd.merge(merged_df, conversations_df, left_on='conversation_id', right_index=True)
-
+first_convo_id = merged_df.iloc[0]['conversation_id']
+print("The conversation ID of the first row is:", first_convo_id)
 # Define the get_convo function
 async def get_convo(min_messages=7, has_personal_attack=False, min_toxicity=0.5):
     # Filter based on criteria
@@ -72,9 +73,16 @@ async def get_convo(min_messages=7, has_personal_attack=False, min_toxicity=0.5)
         return df[df['conversation_id'] == convo_id].sort_values('timestamp', ascending=True)
     else:
         return None
+    
+def get_convo_by_id(convo_id):
+    if convo_id:
+        df = merged_df[merged_df['conversation_id'] == convo_id].sort_values('timestamp', ascending=True)
+        return df
+    else:
+        return None
+
 
 # Get a random conversation based on command line arguments
 convo_df = get_convo(min_messages=args.min_messages, has_personal_attack=args.has_personal_attack, min_toxicity=args.min_toxicity)
 
 print(convo_df)
- 
