@@ -4,6 +4,7 @@ from convokit import Corpus, download
 import random
 import redis
 import pickle
+import os
 
 # Set up command line arguments
 parser = argparse.ArgumentParser(description='Process conversation dataset.')
